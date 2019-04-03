@@ -1,0 +1,465 @@
+#!/Users/mf/anaconda2/envs/astroconda3/bin/python3
+
+### #!/usr/bin/python3
+
+
+import sys, os
+from astropy.io import fits
+from PipelineManager import *
+import numpy as np
+import glob
+
+script_path = os.getcwd()
+
+caldir_path = os.environ["ENGRAVE_caldir"]
+
+
+
+
+
+def getheaderkeyword(file, keyword):
+
+	hdu = fits.open(file)
+	header = hdu[0].header
+
+	try:
+		keyword_value = header[keyword]
+	except KeyError:
+		keyword_value = 'NULL'
+		hdu.close()
+
+	return keyword_value
+
+
+
+
+# See if correct nunber of arguments are given, if not exit with useage message
+if  len(sys.argv) != 2:
+	print ("Useage: ENGRAVEXSHFAST [LIST OF FILES]")
+	sys.exit(0)
+
+
+
+print("  ______ _   _  _____ _____       __      ________  ")
+print(" |  ____| \ | |/ ____|  __ \     /\ \    / /  ____| ")
+print(" | |__  |  \| | |  __| |__) |   /  \ \  / /| |__    ")
+print(" |  __| | . ` | | |_ |  _  /   / /\ \ \/ / |  __|   ")
+print(" | |____| |\  | |__| | | \ \  / ____ \  /  | |____  ")
+print(" |______|_| \_|\_____|_|  \_\/_/    \_\/   |______|   ")
+print("       ")                                                   
+print("***      X-shooter Quick Reduction Pipeline     ***" )
+print("")
+
+print("Calibration files loaded from ", caldir_path)
+
+                                                   
+
+
+# Get current directory, and preprend this to filename
+filelist_name = script_path+"/"+sys.argv[1]
+
+# Check if file exists, otherwise exit
+try:
+	file_list_file  = open(filelist_name, 'r')
+except FileNotFoundError:
+	print ("List of files not found, exiting...")
+	sys.exit(0)
+
+
+
+
+UVB_filelist = []
+VIS_filelist = []
+NIR_filelist = []
+
+for line in file_list_file:
+
+	# Check if file exists
+	filename = script_path+"/"+line.rstrip()
+	try:
+		file  = open(filename, 'r')
+		# Check if file is fits file, and if so read pertinent header keywords
+		try:
+			fits.open(filename)
+
+			instrument = getheaderkeyword(filename, "INSTRUME")
+			arm = getheaderkeyword(filename, "HIERARCH ESO SEQ ARM")
+			exptime	 = getheaderkeyword(filename, "exptime")
+			imtype = getheaderkeyword(filename, "HIERARCH ESO DPR TYPE")
+
+			if instrument == "XSHOOTER" and arm == "UVB" and imtype == "OBJECT":
+				UVB_filelist.append(filename)
+
+			if instrument == "XSHOOTER" and arm == "VIS" and imtype == "OBJECT":
+				VIS_filelist.append(filename)
+
+			if instrument == "XSHOOTER" and arm == "NIR" and imtype == "OBJECT":
+				NIR_filelist.append(filename)
+
+
+		except OSError:
+			print (filename+" is not a valid fits file")
+
+
+	except FileNotFoundError:
+		print ("File not found")
+
+
+
+print ("UVB_ARM FILES:", UVB_filelist, "\n")
+print ("VIS ARM FILES:", VIS_filelist, "\n")
+print ("NIR ARM FILES:", NIR_filelist, "\n")
+
+
+# Running VIS arm
+
+if len(VIS_filelist)>0:
+
+	obsmode = getheaderkeyword(filename, "HIERARCH ESO DPR TECH")
+
+	print("Reducing VIS arm...")
+
+	VIS = PipelineManager()
+	VIS.SetOutputDir(script_path+"/Output")
+	
+	
+	############################################################
+	###  XSH_SCIRED_SLIT_NOD
+	############################################################
+	
+	EsorexName="xsh_scired_slit_nod"
+	
+	VIS.DeclareNewRecipe(EsorexName)
+	VIS.DeclareRecipeInputTag(EsorexName, "OBJECT_SLIT_NOD_VIS", "1..n", "any", "100k")
+	VIS.DeclareRecipeInputTag(EsorexName, "SPECTRAL_FORMAT_TAB_VIS", "1", "-", "-")
+	VIS.DeclareRecipeInputTag(EsorexName, "MASTER_FLAT_SLIT_VIS", "1", "match", "match")
+	VIS.DeclareRecipeInputTag(EsorexName, "MASTER_BIAS_VIS", "1", "match", "match")
+	VIS.DeclareRecipeInputTag(EsorexName, "ORDER_TAB_EDGES_SLIT_VIS", "1", "match", "match")
+	VIS.DeclareRecipeInputTag(EsorexName, "XSH_MOD_CFG_OPT_2D_VIS", "1", "-", "-")
+	VIS.DeclareRecipeInputTag(EsorexName, "MASTER_BP_MAP_VIS", "?", "match", "match")
+	VIS.DeclareRecipeInputTag(EsorexName, "DISP_TAB_VIS", "?", "1x1", "400k")
+	VIS.DeclareRecipeInputTag(EsorexName, "FLUX_STD_CATALOG_VIS", "?", "-" ,"-")
+	VIS.DeclareRecipeInputTag(EsorexName, "RESPONSE_MERGE1D_SLIT_VIS", "?", "-" , "-")
+	VIS.DeclareRecipeInputTag(EsorexName, "ATMOS_EXT_VIS", "?", "-" , "-")
+	
+	############################################################
+	###  XSH_SCIRED_SLIT_STARE
+	############################################################
+	
+	EsorexName="xsh_scired_slit_stare"
+	
+	VIS.DeclareNewRecipe(EsorexName)
+	VIS.DeclareRecipeInputTag(EsorexName, "OBJECT_SLIT_STARE_VIS", "1..n", "any", "100k")
+	VIS.DeclareRecipeInputTag(EsorexName, "SPECTRAL_FORMAT_TAB_VIS", "1", "-", "-")
+	VIS.DeclareRecipeInputTag(EsorexName, "MASTER_FLAT_SLIT_VIS", "1", "match", "match")
+	VIS.DeclareRecipeInputTag(EsorexName, "MASTER_BIAS_VIS", "1", "match", "match")
+	VIS.DeclareRecipeInputTag(EsorexName, "ORDER_TAB_EDGES_SLIT_VIS", "1", "match", "match")
+	VIS.DeclareRecipeInputTag(EsorexName, "XSH_MOD_CFG_OPT_2D_VIS", "1", "-", "-")
+	VIS.DeclareRecipeInputTag(EsorexName, "MASTER_BP_MAP_VIS", "?", "match", "match")
+	VIS.DeclareRecipeInputTag(EsorexName, "DISP_TAB_VIS", "?", "1x1", "400k")
+	VIS.DeclareRecipeInputTag(EsorexName,"FLUX_STD_CATALOG_VIS", "?", "-" ,"-")
+	VIS.DeclareRecipeInputTag(EsorexName,"RESPONSE_MERGE1D_SLIT_VIS", "?", "-" , "-")
+	VIS.DeclareRecipeInputTag(EsorexName,"ATMOS_EXT_VIS", "?", "-" , "-")
+	
+	############################################################
+	###  INPUT-FILES: TO BE MODIFIED
+	############################################################
+	
+	## FOLDER WITH IMAGES
+	# files = glob.glob(script_path+"/target/*") # /target
+	#files = glob.glob("/Users/mf/ENGRAVE/quick_redu/XSH_QuickReduction-master/XSHPipelineManager/vis/*.fits")
+	
+	##
+	## NODDING MODE
+	##
+
+	if obsmode == "ECHELLE,SLIT,NODDING":
+		VIS.EnableRecipe("xsh_scired_slit_nod")
+		VIS.SetFiles("OBJECT_SLIT_NOD_VIS", VIS_filelist)
+	
+	else:
+		## STARING MODE
+	##
+		VIS.EnableRecipe("xsh_scired_slit_stare")
+		VIS.SetFiles("OBJECT_SLIT_STARE_VIS", VIS_filelist)
+	
+	############################################################
+	
+	# Static CALIBs
+	VIS.SetFiles("MASTER_BIAS_VIS",[caldir_path+"/XShooter/VIS/MASTER_BIAS_VIS.fits"])
+	VIS.SetFiles("MASTER_FLAT_SLIT_VIS",[caldir_path+"/XShooter/VIS/MASTER_FLAT_SLIT_VIS.fits"])
+	VIS.SetFiles("ORDER_TAB_EDGES_SLIT_VIS",[caldir_path+"/XShooter/VIS/ORDER_TAB_EDGES_SLIT_VIS.fits"])
+	VIS.SetFiles("XSH_MOD_CFG_OPT_2D_VIS",[caldir_path+"/XShooter/VIS/XSH_MOD_CFG_OPT_2D_VIS.fits"])
+	VIS.SetFiles("RESPONSE_MERGE1D_SLIT_VIS",[caldir_path+"/XShooter/VIS/RESPONSE_MERGE1D_SLIT_VIS.fits"])
+	VIS.SetFiles("DISP_TAB_VIS",[caldir_path+"/XShooter/VIS/DISP_TAB_VIS.fits"])
+	
+	#REF-files:
+	VIS.SetFiles("SPECTRAL_FORMAT_TAB_VIS",[caldir_path+"/XShooter/VIS/SPECTRAL_FORMAT_TAB_VIS.fits"])
+	VIS.SetFiles("ARC_LINE_LIST_VIS",[caldir_path+"/XShooter/VIS/ThAr_vis_custom.fits"])
+	VIS.SetFiles("XSH_MOD_CFG_TAB_VIS",[caldir_path+"/XShooter/VIS/XS_GMCT_110710A_VIS.fits"])
+	VIS.SetFiles("FLUX_STD_CATALOG_VIS",[caldir_path+"/XShooter/VIS/xsh_star_catalog_vis.fits"])
+	VIS.SetFiles("ATMOS_EXT_VIS",[caldir_path+"/XShooter/VIS/xsh_paranal_extinct_model_vis.fits"])
+	VIS.SetFiles("SKY_LINE_LIST_VIS",[caldir_path+"/XShooter/VIS/SKY_LINE_LIST_VIS.fits"])
+	VIS.SetFiles("MASTER_BP_MAP_VIS",[caldir_path+"/XShooter/VIS/BP_MAP_RP_VIS_1x2.fits"])
+	
+	#Run
+	VIS.RunPipeline()
+	
+	# Convert 1D file to ASCII
+	out1d = glob.glob(script_path+"/Output/*FLUX_MERGE1D_VIS*.fits")
+	fitsfile = fits.open(out1d[0])
+	wave = 10.*(np.arange((np.shape(fitsfile[0].data)[0]))*fitsfile[0].header["CDELT1"]+fitsfile[0].header["CRVAL1"])
+	np.savetxt(script_path+"/Output/VIS_ASCII1D_spectrum.dat", list(zip(wave, fitsfile[0].data, fitsfile[1].data)), fmt="%1.4e %1.4e %1.4e")
+	
+
+
+
+
+# Running UVB arm
+
+if len(UVB_filelist)>0:
+
+	obsmode = getheaderkeyword(filename, "HIERARCH ESO DPR TECH")
+
+	print("Reducing UVB arm...")
+	
+	UVB = PipelineManager()
+	UVB.SetOutputDir(script_path+"/Output")
+	
+	
+	############################################################
+	###  XSH_SCIRED_SLIT_NOD
+	############################################################
+	
+	EsorexName="xsh_scired_slit_nod"
+	
+	UVB.DeclareNewRecipe(EsorexName)
+	UVB.DeclareRecipeInputTag(EsorexName, "OBJECT_SLIT_NOD_UVB", "1..n", "any", "100k")
+	UVB.DeclareRecipeInputTag(EsorexName, "SPECTRAL_FORMAT_TAB_UVB", "1", "-", "-")
+	UVB.DeclareRecipeInputTag(EsorexName, "MASTER_FLAT_SLIT_UVB", "1", "match", "match")
+	UVB.DeclareRecipeInputTag(EsorexName, "MASTER_BIAS_UVB", "1", "match", "match")
+	UVB.DeclareRecipeInputTag(EsorexName, "ORDER_TAB_EDGES_SLIT_UVB", "1", "-", "-")
+	UVB.DeclareRecipeInputTag(EsorexName, "XSH_MOD_CFG_OPT_2D_UVB", "1", "-", "-")
+	UVB.DeclareRecipeInputTag(EsorexName, "MASTER_BP_MAP_UVB", "?", "match", "match")
+	UVB.DeclareRecipeInputTag(EsorexName, "DISP_TAB_UVB", "?", "1x1", "400k")
+	UVB.DeclareRecipeInputTag(EsorexName, "FLUX_STD_CATALOG_UVB", "?", "-" ,"-")
+	UVB.DeclareRecipeInputTag(EsorexName, "ATMOS_EXT_UVB", "?", "-" , "-")
+	UVB.DeclareRecipeInputTag(EsorexName, "RESPONSE_MERGE1D_SLIT_UVB", "?", "-" , "-")
+	
+	############################################################
+	###  XSH_SCIRED_SLIT_STARE
+	############################################################
+	
+	EsorexName="xsh_scired_slit_stare"
+	
+	UVB.DeclareNewRecipe(EsorexName)
+	UVB.DeclareRecipeInputTag(EsorexName, "OBJECT_SLIT_STARE_UVB", "1", "any", "any")
+	UVB.DeclareRecipeInputTag(EsorexName, "SPECTRAL_FORMAT_TAB_UVB", "1", "-", "-")
+	UVB.DeclareRecipeInputTag(EsorexName, "MASTER_FLAT_SLIT_UVB", "1", "match", "match")
+	UVB.DeclareRecipeInputTag(EsorexName, "MASTER_BIAS_UVB", "1", "match", "match")
+	UVB.DeclareRecipeInputTag(EsorexName, "ORDER_TAB_EDGES_SLIT_UVB", "1", "match", "match")
+	UVB.DeclareRecipeInputTag(EsorexName, "XSH_MOD_CFG_OPT_2D_UVB", "1", "-", "-")
+	UVB.DeclareRecipeInputTag(EsorexName, "MASTER_BP_MAP_UVB", "?", "match", "match")
+	UVB.DeclareRecipeInputTag(EsorexName, "DISP_TAB_UVB", "?", "1x1", "400k")
+	UVB.DeclareRecipeInputTag(EsorexName, "FLUX_STD_CATALOG_UVB", "?", "-" ,"-")
+	UVB.DeclareRecipeInputTag(EsorexName, "ATMOS_EXT_UVB", "?", "-" , "-")
+	UVB.DeclareRecipeInputTag(EsorexName, "RESPONSE_MERGE1D_SLIT_UVB", "?", "-" , "-")
+	UVB.DeclareRecipeInputTag(EsorexName, "XSH_MOD_CFG_TAB_UVB", "1", "-", "-")
+	
+	############################################################
+	###  INPUT-FILES: TO BE MODIFIED
+	############################################################
+	
+	##
+	## NODDING MODE
+	##
+
+	if obsmode == "ECHELLE,SLIT,NODDING":
+		UVB.EnableRecipe("xsh_scired_slit_nod")
+		UVB.SetFiles("OBJECT_SLIT_NOD_UVB", UVB_filelist)
+	
+	else:
+		## STARING MODE
+	##
+		UVB.EnableRecipe("xsh_scired_slit_stare")
+		UVB.SetFiles("OBJECT_SLIT_STARE_UVB", UVB_filelist)
+	
+	############################################################
+	
+	# Static CALIBs
+	UVB.SetFiles("MASTER_BIAS_UVB",[caldir_path+"/XShooter/UVB/MASTER_BIAS_UVB.fits"])
+	UVB.SetFiles("MASTER_FLAT_SLIT_UVB",[caldir_path+"/XShooter/UVB/MASTER_FLAT_SLIT_UVB.fits"])
+	UVB.SetFiles("ORDER_TAB_EDGES_SLIT_UVB",[caldir_path+"/XShooter/UVB/ORDER_TAB_EDGES_SLIT_UVB.fits"])
+	UVB.SetFiles("XSH_MOD_CFG_OPT_2D_UVB",[caldir_path+"/XShooter/UVB/XSH_MOD_CFG_OPT_2D_UVB.fits"])
+	UVB.SetFiles("RESPONSE_MERGE1D_SLIT_UVB",[caldir_path+"/XShooter/UVB/RESPONSE_MERGE1D_SLIT_UVB.fits"])
+	UVB.SetFiles("DISP_TAB_UVB",[caldir_path+"/XShooter/UVB/DISP_TAB_UVB.fits"])
+	
+	#REF-files:
+	UVB.SetFiles("SPECTRAL_FORMAT_TAB_UVB",[caldir_path+"/XShooter/UVB/SPECTRAL_FORMAT_TAB_UVB.fits"])
+	UVB.SetFiles("ARC_LINE_LIST_UVB",[caldir_path+"/XShooter/UVB/ThAr_uvb_2012PBR.fits"])
+	UVB.SetFiles("XSH_MOD_CFG_TAB_UVB",[caldir_path+"/XShooter/UVB/XS_GMCT_110710A_UVB.fits"])
+	UVB.SetFiles("FLUX_STD_CATALOG_UVB",[caldir_path+"/XShooter/UVB/xsh_star_catalog_uvb.fits"])
+	UVB.SetFiles("ATMOS_EXT_UVB",[caldir_path+"/XShooter/UVB/xsh_paranal_extinct_model_uvb.fits"])
+	UVB.SetFiles("SKY_LINE_LIST_UVB",[caldir_path+"/XShooter/UVB/SKY_LINE_LIST_UVB.fits"])
+	UVB.SetFiles("MASTER_BP_MAP_UVB",[caldir_path+"/XShooter/UVB/BP_MAP_RP_UVB_1x2.fits"])
+	
+	#Run
+	UVB.RunPipeline()
+	
+	# Convert 1D file to ASCII
+	out1d = glob.glob(script_path+"/Output/*FLUX_MERGE1D_UVB*.fits")
+	fitsfile = fits.open(out1d[0])
+	wave = 10.*(np.arange((np.shape(fitsfile[0].data)[0]))*fitsfile[0].header["CDELT1"]+fitsfile[0].header["CRVAL1"])
+	np.savetxt(script_path+"/Output/UVB_ASCII1D_spectrum.dat", list(zip(wave, fitsfile[0].data, fitsfile[1].data)), fmt="%1.4e %1.4e %1.4e")
+	
+
+# Running NIR arm
+
+if len(NIR_filelist)>0:
+
+	obsmode = getheaderkeyword(filename, "HIERARCH ESO DPR TECH")
+
+	print("Reducing NIR arm...")
+	
+
+	NIR = PipelineManager()
+	NIR.SetOutputDir(script_path+"/Output")
+
+
+	############################################################
+	###  XSH_SCIRED_SLIT_NOD
+	############################################################
+
+	EsorexName="xsh_scired_slit_nod"
+
+	NIR.DeclareNewRecipe(EsorexName)
+	NIR.DeclareRecipeInputTag(EsorexName, "OBJECT_SLIT_NOD_NIR", "1..n", "-", "-")
+	NIR.DeclareRecipeInputTag(EsorexName, "SPECTRAL_FORMAT_TAB_NIR", "1", "-", "-")
+	NIR.DeclareRecipeInputTag(EsorexName, "MASTER_FLAT_SLIT_NIR", "1", "-", "-")
+	NIR.DeclareRecipeInputTag(EsorexName, "ORDER_TAB_EDGES_SLIT_NIR", "1", "-", "-")
+	NIR.DeclareRecipeInputTag(EsorexName, "XSH_MOD_CFG_OPT_2D_NIR", "1", "-", "-")
+	NIR.DeclareRecipeInputTag(EsorexName, "MASTER_DARK_NIR", "?", "-", "-")
+	NIR.DeclareRecipeInputTag(EsorexName, "MASTER_BP_MAP_NIR", "?", "-", "-")
+	NIR.DeclareRecipeInputTag(EsorexName, "DISP_TAB_NIR", "?", "-", "-")
+	NIR.DeclareRecipeInputTag(EsorexName,"FLUX_STD_CATALOG_NIR", "?", "-" ,"-")
+	NIR.DeclareRecipeInputTag(EsorexName,"ATMOS_EXT_NIR", "?", "-" , "-")
+	NIR.DeclareRecipeInputTag(EsorexName,"RESPONSE_MERGE1D_SLIT_NIR", "?", "-" , "-")
+	NIR.DeclareRecipeInputTag(EsorexName, "XSH_MOD_CFG_TAB_NIR", "1", "-", "-")
+
+	############################################################
+	###  XSH_SCIRED_SLIT_STARE
+	############################################################
+
+	EsorexName="xsh_scired_slit_stare"
+
+	NIR.DeclareNewRecipe(EsorexName)
+	NIR.DeclareRecipeInputTag(EsorexName, "OBJECT_SLIT_STARE_NIR", "1..n", "-", "-")
+	NIR.DeclareRecipeInputTag(EsorexName, "SPECTRAL_FORMAT_TAB_NIR", "1", "-", "-")
+	NIR.DeclareRecipeInputTag(EsorexName, "MASTER_FLAT_SLIT_NIR", "1", "-", "-")
+	NIR.DeclareRecipeInputTag(EsorexName, "ORDER_TAB_EDGES_SLIT_NIR", "1", "-", "-")
+	NIR.DeclareRecipeInputTag(EsorexName, "XSH_MOD_CFG_OPT_2D_NIR", "1", "-", "-")
+	NIR.DeclareRecipeInputTag(EsorexName, "MASTER_DARK_NIR", "?", "-", "-")
+	NIR.DeclareRecipeInputTag(EsorexName, "MASTER_BP_MAP_NIR", "?", "-", "-")
+	NIR.DeclareRecipeInputTag(EsorexName, "DISP_TAB_NIR", "?", "-", "-")
+	NIR.DeclareRecipeInputTag(EsorexName,"FLUX_STD_CATALOG_NIR", "?", "-" ,"-")
+	NIR.DeclareRecipeInputTag(EsorexName,"ATMOS_EXT_NIR", "?", "-" , "-")
+	NIR.DeclareRecipeInputTag(EsorexName,"RESPONSE_MERGE1D_SLIT_NIR", "?", "-" , "-")
+	NIR.DeclareRecipeInputTag(EsorexName, "XSH_MOD_CFG_TAB_NIR", "1", "-", "-")
+
+	#NIR.SetRecipeOptions(SOFFileName, "--sky-method=MEDIAN")#MEDIAN is more stable than bspline
+	#NIR.SetRecipeOptions(SOFFileName, "--sky-bspline-order=4")
+	#NIR.SetRecipeOptions(SOFFileName, "--sky-subtract=FALSE")
+
+	#options from Stefan and Sune (these options might give better sky-subtraction):
+	#NIR.SetRecipeOptions(SOFFileName, "--background-nb-y=50 --background-radius-y=40 --background-method=median --rectify-bin-lambda=.05 --rectify-bin-slit=.2 --removecrhsingle-niter=3 --extract-method=FULL --compute-map=TRUE --rectify-conserve-flux=FALSE --sky-subtract=TRUE --sky-bspline-nbkpts-first=500 --sky-bspline-nbkpts-second=500 --sky-method=MEDIAN  --rectify-radius=1 --mergeord-method=0")
+
+
+	############################################################
+	###  INPUT-FILES: TO BE MODIFIED
+	############################################################
+	
+	## FOLDER WITH IMAGES
+	# files = glob.glob(script_path+"/target/*") # /target
+	#files = glob.glob("/Users/mf/ENGRAVE/quick_redu/XSH_QuickReduction-master/XSHPipelineManager/vis/*.fits")
+	
+	##
+	## NODDING MODE
+	##
+
+	if obsmode == "ECHELLE,SLIT,NODDING":
+		NIR.EnableRecipe("xsh_scired_slit_nod")
+		NIR.SetFiles("OBJECT_SLIT_NOD_NIR", NIR_filelist)
+	
+	else:
+		## STARING MODE
+	##
+		NIR.EnableRecipe("xsh_scired_slit_stare")
+		NIR.SetFiles("OBJECT_SLIT_STARE_NIR", NIR_filelist)
+	
+	############################################################
+
+
+
+	# Get exptime:
+	exptime = [0]*len(NIR_filelist)
+	for ii in range(len(NIR_filelist)):
+	    exptime[ii] = fits.open(NIR_filelist[ii])[0].header["EXPTIME"]
+
+	if not exptime.count(exptime[0]) == len(exptime):
+	    raise TypeError("Input image list does not have the same exposure times.")
+
+	exptime = int(exptime[0])
+
+	# Get slit
+	slit = [0]*len(NIR_filelist)
+	for ii in range(len(NIR_filelist)):
+	    slit[ii] = fits.open(NIR_filelist[ii])[0].header["HIERARCH ESO INS OPTI5 NAME"]
+
+	if not slit.count(slit[0]) == len(slit):
+	    raise TypeError("Input image list does not use the same slit.")
+
+	JH = slit[0].endswith("JH")
+
+	# Static CALIBs
+	try:
+	    NIR.SetFiles("MASTER_DARK_NIR",[caldir_path+"/XShooter/NIR/MASTER_DARK_NIR_%s.fits"%exptime])
+	except:
+	    raise InputError("NIR DARK does not exist with the correct exposure time. Get it.")
+
+	if JH:
+	    static_path = caldir_path+"/XShooter/NIR/JH/"
+	else:
+	    static_path = caldir_path+"/XShooter/NIR/"
+
+
+	NIR.SetFiles("MASTER_FLAT_SLIT_NIR",["%sMASTER_FLAT_SLIT_NIR.fits"%static_path])
+	NIR.SetFiles("ORDER_TAB_EDGES_SLIT_NIR",["%sORDER_TAB_EDGES_SLIT_NIR.fits"%static_path])
+	NIR.SetFiles("XSH_MOD_CFG_OPT_2D_NIR",["%sXSH_MOD_CFG_OPT_2D_NIR.fits"%static_path])
+	NIR.SetFiles("RESPONSE_MERGE1D_SLIT_NIR",["%sRESPONSE_MERGE1D_SLIT_NIR.fits"%static_path])
+	NIR.SetFiles("DISP_TAB_NIR",["%sDISP_TAB_NIR.fits"%static_path])
+
+	#REF-files:
+	if JH:
+	    NIR.SetFiles("SPECTRAL_FORMAT_TAB_NIR",["%sSPECTRAL_FORMAT_TAB_%s_NIR.fits"%(static_path, "JH")])
+	else:
+	    NIR.SetFiles("SPECTRAL_FORMAT_TAB_NIR",["%sSPECTRAL_FORMAT_TAB_NIR.fits"%static_path])
+
+	NIR.SetFiles("ARC_LINE_LIST_NIR",["%sARC_LINE_LIST_AFC_NIR.fits"%static_path])
+	NIR.SetFiles("XSH_MOD_CFG_TAB_NIR",["%sXS_GMCT_110710A_NIR.fits"%static_path])
+	NIR.SetFiles("FLUX_STD_CATALOG_NIR",["%sxsh_star_catalog_nir.fits"%static_path])
+	NIR.SetFiles("ATMOS_EXT_NIR",["%sxsh_paranal_extinct_model_nir.fits"%static_path])
+	NIR.SetFiles("SKY_LINE_LIST_NIR",["%sSKY_LINE_LIST_NIR.fits"%static_path])
+	NIR.SetFiles("MASTER_BP_MAP_NIR",["%sBP_MAP_RP_NIR.fits"%static_path])
+
+	#Run
+	NIR.RunPipeline()
+
+	# Convert 1D file to ASCII
+	out1d = glob.glob(script_path+"/Output/*FLUX_MERGE1D_NIR*.fits")
+	fitsfile = fits.open(out1d[0])
+	wave = 10.*(np.arange((np.shape(fitsfile[0].data)[0]))*fitsfile[0].header["CDELT1"]+fitsfile[0].header["CRVAL1"])
+	np.savetxt(script_path+"/Output/NIR_ASCII1D_spectrum.dat", list(zip(wave, fitsfile[0].data, fitsfile[1].data)), fmt="%1.4e %1.4e %1.4e")
+
+
+
+
