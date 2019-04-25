@@ -18,7 +18,7 @@ Python 3, with astropy, numpy (if you install this through conda, you should hav
 1. Download the files, and place the calibration directory in a location of your choice (e.g. /Users/mf/caldir/)
 
 2. Add a line to your bash profile pointing the ENGRAVE_caldir variable to the correct directory
-    export ENGRAVE_caldir=/Users/mf/caldir
+	export ENGRAVE_caldir=/Users/mf/caldir
 
 3. Put the pipeline itself (i.e. ENGRAVEXSHFAST and PipelineManager.py) in some location (e.g. /Users/mf/ENGRAVE/pipeline/)
 
